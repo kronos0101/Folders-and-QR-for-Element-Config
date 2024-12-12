@@ -204,7 +204,7 @@ def create_element_folders_and_shortcuts(base_path):
                 file.write(f"Symbol: {symbol}\n")
                 file.write(f"Atomic Number: {atomic_number}\n")
                 file.write(f"Family: {family}\n")
-                file.write(f"Electron Configuration: {shorthand_config}\n")
+                file.write(f"Electron Configuration: {config}\n")
 
             # Generate QR code and convert to icon
             qr_code_path = os.path.join(symbol_folder_path, f"{symbol}_QR.png")

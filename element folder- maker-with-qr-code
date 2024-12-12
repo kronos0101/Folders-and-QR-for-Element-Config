@@ -1,6 +1,7 @@
 import os
-from win32com.client import Dispatch
 import qrcode
+from PIL import Image
+from win32com.client import Dispatch
 
 # Your element details
 elements_with_details = [
@@ -124,6 +125,7 @@ elements_with_details = [
     ("Actinides", "Og", "Oganesson", 118, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f14 6s2 6p6 6d10 7s2 7p6"),
 
 ]
+
 # Noble gases for shorthand notation
 noble_gases = {
     2: "He",
@@ -133,53 +135,70 @@ noble_gases = {
     54: "Xe",
     86: "Rn",
 }
-
 def get_shorthand_electron_config(atomic_number, config):
-    """
-    Returns the shorthand (noble gas) electron configuration.
-    """
+    """Get the shorthand electron configuration."""
     previous_noble_gas = ""
     remaining_config = config
-
-    # Find the previous noble gas
     for z, symbol in sorted(noble_gases.items(), reverse=True):
         if atomic_number > z:
             previous_noble_gas = f"[{symbol}]"
-            remaining_config = config.split(f"{symbol} ")[-1]  # Trim to get remaining config
+            remaining_config = config.split(f"{symbol} ")[-1]
             break
-
     return f"{previous_noble_gas} {remaining_config}".strip()
 
 
-def create_element_folders(base_path):
-    """
-    Creates folders and configuration files for elements with shorthand configurations.
-    """
+def create_qr_code(text, output_path):
+    """Generate QR code and save it as an image."""
+    qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_Q)
+    qr.add_data(text.strip())
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    img.save(output_path)
+    print(f"QR code saved to {output_path}")
+
+
+def convert_png_to_ico(png_path, ico_path, sizes=[16, 32, 48, 64]):
+    """Convert PNG to ICO."""
     try:
-        # Ensure base path exists
+        with Image.open(png_path) as img:
+            img = img.convert("RGBA")
+            img.save(ico_path, format="ICO", sizes=[(size, size) for size in sizes])
+            print(f"Converted PNG to ICO: {ico_path}")
+    except Exception as e:
+        print(f"Error converting PNG to ICO: {e}")
+
+
+def create_shortcut(target_path, shortcut_path, icon_path=None):
+    """Create a shortcut with optional icon."""
+    try:
+        target_path = os.path.abspath(target_path)
+        shortcut_name = os.path.join(shortcut_path, "Next_Element.lnk")
+        shell = Dispatch('WScript.Shell')
+        shortcut = shell.CreateShortcut(shortcut_name)
+        shortcut.TargetPath = target_path
+        shortcut.WorkingDirectory = target_path
+        if icon_path:
+            shortcut.IconLocation = icon_path
+        shortcut.Save()
+        print(f"Shortcut created: {shortcut_name} with icon: {icon_path}")
+    except Exception as e:
+        print(f"Error creating shortcut: {e}")
+
+
+def create_element_folders_and_shortcuts(base_path):
+    """Create folders, generate QR codes, and set shortcuts with icons."""
+    try:
         os.makedirs(base_path, exist_ok=True)
-        
         periodic_table_folder = os.path.join(base_path, "Periodic-Table")
         os.makedirs(periodic_table_folder, exist_ok=True)
 
-        # Create folders and configuration files
-        for family, symbol, name, atomic_number, config in elements_with_details:
-            # Create Family folder
-            family_folder_path = os.path.join(periodic_table_folder, family)
-            os.makedirs(family_folder_path, exist_ok=True)
-
-            # Create Symbol folder
-            symbol_folder_path = os.path.join(family_folder_path, symbol)
+        for i, (family, symbol, name, atomic_number, config) in enumerate(elements_with_details):
+            shorthand_config = get_shorthand_electron_config(atomic_number, config)
+            symbol_folder_path = os.path.join(periodic_table_folder, family, symbol, f"{symbol}_{shorthand_config.replace(' ', '_')}")
             os.makedirs(symbol_folder_path, exist_ok=True)
 
-            # Compute the shorthand electron configuration
-            shorthand_config = get_shorthand_electron_config(atomic_number, config)
-            symbol_config_folder_name = f"{symbol}_{shorthand_config.replace(' ', '_')}"
-            symbol_config_folder_path = os.path.join(symbol_folder_path, symbol_config_folder_name)
-            os.makedirs(symbol_config_folder_path, exist_ok=True)
-
-            # Create the Electron-configuration.txt file
-            config_file_path = os.path.join(symbol_config_folder_path, "Electron-configuration.txt")
+            # Write electron configuration
+            config_file_path = os.path.join(symbol_folder_path, "Electron-configuration.txt")
             with open(config_file_path, "w") as file:
                 file.write(f"Element: {name}\n")
                 file.write(f"Symbol: {symbol}\n")
@@ -187,146 +206,26 @@ def create_element_folders(base_path):
                 file.write(f"Family: {family}\n")
                 file.write(f"Electron Configuration: {shorthand_config}\n")
 
-            print(f"Created folder and configuration file for: {symbol} - {name}")
+            # Generate QR code and convert to icon
+            qr_code_path = os.path.join(symbol_folder_path, f"{symbol}_QR.png")
+            create_qr_code(f"{name} ({symbol})\nAtomic Number: {atomic_number}\n{shorthand_config}", qr_code_path)
 
-        print("All folders and files created successfully.")
+            icon_path = os.path.join(symbol_folder_path, f"{symbol}_QR.ico")
+            convert_png_to_ico(qr_code_path, icon_path)
 
-    except Exception as e:
-        print(f"Error during folder creation: {e}")
-
-import os
-import qrcode
-
-def create_qr_code(text, output_path):
-    """Generate a QR code from text and save it as an image."""
-    if not text.strip():  # Ensure there's usable data
-        print(f"No usable data in text: '{text}'")
-        return
-    
-    qr = qrcode.QRCode(
-        version=None,  # Automatically determine size
-        error_correction=qrcode.constants.ERROR_CORRECT_Q,
-        box_size=10,
-        border=4,
-    )
-    qr.add_data(text.strip())
-    qr.make(fit=True)
-
-    img = qr.make_image(fill_color="black", back_color="white")
-    img.save(output_path)
-    print(f"QR code saved to {output_path}")
-
-def generate_qr_codes_for_elements(elements_base_path):
-    """Generate QR codes for the last folder of each element."""
-    for root, dirs, files in os.walk(elements_base_path):
-        if 'Last_Element.txt' in files:  # Assume this identifies the last folder
-            last_element_file = os.path.join(root, 'Last_Element.txt')
-            qr_code_path = os.path.join(root, 'element_qr_code.png')
-
-            # Check if the file exists and has content
-            if not os.path.exists(last_element_file):
-                print(f"File {last_element_file} does not exist.")
-                continue
-
-            with open(last_element_file, 'r', encoding='utf-8') as f:
-                content = f.read()
-            
-            if not content.strip():  # Check if the file has valid content
-                print(f"File {last_element_file} is empty or has no usable data.")
-                continue
-            
-            print(f"Generating QR code for data: {content.strip()}")
-            create_qr_code(content, qr_code_path)
-
-
-def add_qr_to_last_folder(base_path):
-    """Generate and add a QR code image for the text file in the last folder of each element."""
-    for root, dirs, files in os.walk(base_path):
-        # Check if this is the last folder by checking if dirs is empty
-        if not dirs:
-            # Check for the presence of a text file
-            text_files = [f for f in files if f.endswith('.txt')]
-            for text_file in text_files:
-                text_file_path = os.path.join(root, text_file)
-                with open(text_file_path, 'r') as file:
-                    content = file.read()
-                
-                # Generate QR code
-                qr_output_path = os.path.join(root, f"{os.path.splitext(text_file)[0]}_QR.png")
-                create_qr_code(content, qr_output_path)
-                print(f"QR Code created: {qr_output_path}")
-
-# Base path to the Periodic Table directory
-base_path = r"c:\Users\Krono\OneDrive\Desktop\Elements\Periodic-Table"
-add_qr_to_last_folder(base_path)
-
-def create_shortcuts(base_path):
-    """
-    Creates shortcuts to the next element folder.
-    """
-    try:
-        periodic_table_folder = os.path.join(base_path, "Periodic-Table")
-        
-        # Create shortcuts
-        for i, (family, symbol, name, atomic_number, config) in enumerate(elements_with_details):
-            shorthand_config = get_shorthand_electron_config(atomic_number, config)
-            current_symbol_config_folder_path = os.path.join(
-                periodic_table_folder, family, symbol, f"{symbol}_{shorthand_config.replace(' ', '_')}"
-            )
-
-            # Ensure the current folder exists
-            if not os.path.exists(current_symbol_config_folder_path):
-                print(f"Warning: Folder does not exist: {current_symbol_config_folder_path}")
-                continue
-
-            # Create shortcut to the next element
+            # Create shortcut to next element
             if i + 1 < len(elements_with_details):
                 next_family, next_symbol, next_name, next_atomic_number, next_config = elements_with_details[i + 1]
                 next_shorthand_config = get_shorthand_electron_config(next_atomic_number, next_config)
-                next_symbol_config_folder_path = os.path.join(
-                    periodic_table_folder, next_family, next_symbol, f"{next_symbol}_{next_shorthand_config.replace(' ', '_')}"
-                )
+                next_symbol_folder_path = os.path.join(periodic_table_folder, next_family, next_symbol, f"{next_symbol}_{next_shorthand_config.replace(' ', '_')}")
+                create_shortcut(next_symbol_folder_path, symbol_folder_path, icon_path)
 
-                # Only create shortcut if the target folder exists
-                if os.path.exists(next_symbol_config_folder_path):
-                    create_shortcut(next_symbol_config_folder_path, current_symbol_config_folder_path)
-                else:
-                    print(f"Next folder does not exist for {symbol}. Skipping shortcut creation.")
-
+        print("All folders, QR codes, icons, and shortcuts created successfully.")
     except Exception as e:
-        print(f"Error during shortcut creation: {e}")
+        print(f"Error creating element folders and shortcuts: {e}")
 
+# Base path for element folders
 
-def create_shortcut(target_path, shortcut_path):
-    """
-    Creates a shortcut to the target folder inside the given shortcut path.
-    """
-    try:
-        target_path = os.path.abspath(target_path)
-        shortcut_name = os.path.join(shortcut_path, "Next_Element.lnk")
-        
-        # Debug: Print paths
-        print(f"Creating shortcut: {shortcut_name} -> {target_path}")
+base_path = r"c:/Users/yourusername/path/Elements" 
 
-        # Check if target path exists
-        if not os.path.exists(target_path):
-            print(f"Warning: Target path does not exist: {target_path}")
-            return
-
-        # Create the shortcut
-        shell = Dispatch('WScript.Shell')
-        shortcut = shell.CreateShortcut(shortcut_name)
-        shortcut.TargetPath = target_path
-        shortcut.WorkingDirectory = target_path
-        shortcut.Save()
-
-        print(f"Shortcut created: {shortcut_name}")
-
-    except Exception as e:
-        print(f"Error creating shortcut: {e}")
-
-# Specify the base path where the folders should be created
-base_path = r"c:/Users/yourusername/path/Elements"  # Modify this path as necessary
-create_element_folders(base_path)
-
-#### run twice for qr codes 
+create_element_folders_and_shortcuts(base_path)

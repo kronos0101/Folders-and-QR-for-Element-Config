@@ -1,0 +1,332 @@
+import os
+from win32com.client import Dispatch
+import qrcode
+
+# Your element details
+elements_with_details = [
+    ("Nonmetals", "H", "Hydrogen", 1, "1s1"),
+    ("Noble Gases", "He", "Helium", 2, "1s2"),
+    ("Alkali Metals", "Li", "Lithium", 3, "1s2 2s1"),
+    ("Alkaline Earth Metals", "Be", "Beryllium", 4, "1s2 2s2"),
+    ("Boron Group", "B", "Boron", 5, "1s2 2s2 2p1"),
+    ("Nonmetals", "C", "Carbon", 6, "1s2 2s2 2p2"),
+    ("Nonmetals", "N", "Nitrogen", 7, "1s2 2s2 2p3"),
+    ("Nonmetals", "O", "Oxygen", 8, "1s2 2s2 2p4"),
+    ("Halogens", "F", "Fluorine", 9, "1s2 2s2 2p5"),
+    ("Noble Gases", "Ne", "Neon", 10, "1s2 2s2 2p6"),
+    ("Alkali Metals", "Na", "Sodium", 11, "1s2 2s2 2p6 3s1"),
+    ("Alkaline Earth Metals", "Mg", "Magnesium", 12, "1s2 2s2 2p6 3s2"),
+    ("Boron Group", "Al", "Aluminum", 13, "1s2 2s2 2p6 3s2 3p1"),
+    ("Metalloids", "Si", "Silicon", 14, "1s2 2s2 2p6 3s2 3p2"),
+    ("Nonmetals", "P", "Phosphorus", 15, "1s2 2s2 2p6 3s2 3p3"),
+    ("Nonmetals", "S", "Sulfur", 16, "1s2 2s2 2p6 3s2 3p4"),
+    ("Halogens", "Cl", "Chlorine", 17, "1s2 2s2 2p6 3s2 3p5"),
+    ("Noble Gases", "Ar", "Argon", 18, "1s2 2s2 2p6 3s2 3p6"),
+    ("Alkali Metals", "K", "Potassium", 19, "1s2 2s2 2p6 3s2 3p6 4s1"),
+    ("Alkaline Earth Metals", "Ca", "Calcium", 20, "1s2 2s2 2p6 3s2 3p6 4s2"),
+    ("Transition Metals", "Sc", "Scandium", 21, "1s2 2s2 2p6 3s2 3p6 4s2 3d1"),
+    ("Transition Metals", "Ti", "Titanium", 22, "1s2 2s2 2p6 3s2 3p6 4s2 3d2"),
+    ("Transition Metals", "V", "Vanadium", 23, "1s2 2s2 2p6 3s2 3p6 4s2 3d3"),
+    ("Transition Metals", "Cr", "Chromium", 24, "1s2 2s2 2p6 3s2 3p6 4s1 3d5"),
+    ("Transition Metals", "Mn", "Manganese", 25, "1s2 2s2 2p6 3s2 3p6 4s2 3d5"),
+    ("Transition Metals", "Fe", "Iron", 26, "1s2 2s2 2p6 3s2 3p6 4s2 3d6"),
+    ("Transition Metals", "Co", "Cobalt", 27, "1s2 2s2 2p6 3s2 3p6 4s2 3d7"),
+    ("Transition Metals", "Ni", "Nickel", 28, "1s2 2s2 2p6 3s2 3p6 4s2 3d8"),
+    ("Transition Metals", "Cu", "Copper", 29, "1s2 2s2 2p6 3s2 3p6 4s2 3d10"),
+    ("Transition Metals", "Zn", "Zinc", 30, "1s2 2s2 2p6 3s2 3p6 4s2 3d10"),
+    ("Boron Group", "Ga", "Gallium", 31, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p1"),
+    ("Metalloids", "Ge", "Germanium", 32, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p2"),
+    ("Metalloids", "As", "Arsenic", 33, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p3"),
+    ("Nonmetals", "Se", "Selenium", 34, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p4"),
+    ("Halogens", "Br", "Bromine", 35, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p5"),
+    ("Noble Gases", "Kr", "Krypton", 36, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6"),
+    ("Alkali Metals", "Rb", "Rubidium", 37, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s1"),
+    ("Alkaline Earth Metals", "Sr", "Strontium", 38, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2"),
+    ("Transition Metals", "Y", "Yttrium", 39, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d1"),
+    ("Transition Metals", "Zr", "Zirconium", 40, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d2"),
+    ("Transition Metals", "Nb", "Niobium", 41, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s1 4d4"),
+    ("Transition Metals", "Mo", "Molybdenum", 42, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s1 4d5"),
+    ("Transition Metals", "Tc", "Technetium", 43, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d5"),
+    ("Transition Metals", "Ru", "Ruthenium", 44, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s1 4d7"),
+    ("Transition Metals", "Rh", "Rhodium", 45, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s1 4d8"),
+    ("Transition Metals", "Pd", "Palladium", 46, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s0 4d10"),
+    ("Transition Metals", "Ag", "Silver", 47, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s1 4d10"),
+    ("Transition Metals", "Cd", "Cadmium", 48, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10"),
+    ("Transition Metals", "In", "Indium", 49, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 5p1"),
+    ("Transition Metals", "Sn", "Tin", 50, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 5p2"),
+    ("Transition Metals", "Sb", "Antimony", 51, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 5p3"),
+    ("Transition Metals", "Te", "Tellurium", 52, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 5p4"),
+    ("Halogens", "I", "Iodine", 53, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 5p5"),
+    ("Noble Gases", "Xe", "Xenon", 54, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 5p6"),
+    ("Alkali Metals", "Cs", "Cesium", 55, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 5p6 6s1"),
+    ("Alkaline Earth Metals", "Ba", "Barium", 56, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 5p6 6s2"),
+    ("Lanthanides", "La", "Lanthanum", 57, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 5p6 6s2"),
+    ("Lanthanides", "Ce", "Cerium", 58, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f1 6s2"),
+    ("Lanthanides", "Pr", "Praseodymium", 59, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f3 6s2"),
+    ("Lanthanides", "Nd", "Neodymium", 60, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f4 6s2"),
+    ("Lanthanides", "Pm", "Promethium", 61, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f5 6s2"),
+    ("Lanthanides", "Sm", "Samarium", 62, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f6 6s2"),
+    ("Lanthanides", "Eu", "Europium", 63, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f7 6s2"),
+    ("Lanthanides", "Gd", "Gadolinium", 64, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f7 5d1 6s2"),
+    ("Lanthanides", "Tb", "Terbium", 65, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f9 6s2"),
+    ("Lanthanides", "Dy", "Dysprosium", 66, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f10 6s2"),
+    ("Lanthanides", "Ho", "Holmium", 67, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f11 6s2"),
+    ("Lanthanides", "Er", "Erbium", 68, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f12 6s2"),
+    ("Lanthanides", "Tm", "Thulium", 69, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f13 6s2"),
+    ("Lanthanides", "Yb", "Ytterbium", 70, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f14 6s2"),
+    ("Lanthanides", "Lu", "Lutetium", 71, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f14 5d1 6s2"),
+    ("Actinides", "Hf", "Hafnium", 72, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f14 5d2 6s2"),
+    ("Transition Metals", "Ta", "Tantalum", 73, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f14 5d3 6s2"),
+    ("Transition Metals", "W", "Tungsten", 74, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f14 5d4 6s2"),
+    ("Transition Metals", "Re", "Rhenium", 75, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f14 5d5 6s2"),
+    ("Transition Metals", "Os", "Osmium", 76, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f14 5d6 6s2"),
+    ("Transition Metals", "Ir", "Iridium", 77, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f14 5d7 6s2"),
+    ("Transition Metals", "Pt", "Platinum", 78, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f14 5d9 6s1"),
+    ("Transition Metals", "Au", "Gold", 79, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f14 5d10 6s1"),
+    ("Transition Metals", "Hg", "Mercury", 80, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f14 5d10 6s2"),
+    ("Boron Group", "Tl", "Thallium", 81, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f14 5d10 6s2 6p1"),
+    ("Carbon Group", "Pb", "Lead", 82, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f14 5d10 6s2 6p2"),
+    ("Carbon Group", "Bi", "Bismuth", 83, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f14 5d10 6s2 6p3"),
+    ("Halogens", "Po", "Polonium", 84, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f14 5d10 6s2 6p4"),
+    ("Noble Gases", "At", "Astatine", 85, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f14 5d10 6s2 6p5"),
+    ("Noble Gases", "Rn", "Radon", 86, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f14 5d10 6s2 6p6"),
+    ("Alkaline Earth Metals", "Fr", "Francium", 87, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f14 5d10 6s2 6p6 7s1"),
+    ("Alkaline Earth Metals", "Ra", "Radium", 88, "1s2 2s2 2p6 3s2 3p6 4s2 3d10 4p6 5s2 4d10 4f14 5d10 6s2 6p6 7s2"),
+    ("Actinides", "Ac", "Actinium", 89, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 6s2 6p6 6d1 7s2"),
+    ("Actinides", "Th", "Thorium", 90, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 6s2 6p6 6d2 7s2"),
+    ("Actinides", "Pa", "Protactinium", 91, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f2 6s2 6p6 6d1 7s2"),
+    ("Actinides", "U", "Uranium", 92, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f3 6s2 6p6 6d1 7s2"),
+    ("Actinides", "Np", "Neptunium", 93, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f4 6s2 6p6 6d1 7s2"),
+    ("Actinides", "Pu", "Plutonium", 94, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f6 6s2 6p6 7s2"),
+    ("Actinides", "Am", "Americium", 95, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f7 6s2 6p6 7s2"),
+    ("Actinides", "Cm", "Curium", 96, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f7 6s2 6p6 6d1 7s2"),
+    ("Actinides", "Bk", "Berkelium", 97, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f9 6s2 6p6 7s2"),
+    ("Actinides", "Cf", "Californium", 98, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f10 6s2 6p6 7s2"),
+    ("Actinides", "Es", "Einsteinium", 99, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f11 6s2 6p6 7s2"),
+    ("Actinides", "Fm", "Fermium", 100, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f12 6s2 6p6 7s2"),
+    ("Actinides", "Md", "Mendelevium", 101, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f13 6s2 6p6 7s2"),
+    ("Actinides", "No", "Nobelium", 102, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f14 6s2 6p6 7s2"),
+    ("Actinides", "Lr", "Lawrencium", 103, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f14 6s2 6p6 6d1 7s2"),
+    ("Actinides", "Rf", "Rutherfordium", 104, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f14 6s2 6p6 6d2 7s2"),
+    ("Actinides", "Db", "Dubnium", 105, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f14 6s2 6p6 6d3 7s2"),
+    ("Actinides", "Sg", "Seaborgium", 106, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f14 6s2 6p6 6d4 7s2"),
+    ("Actinides", "Bh", "Bohrium", 107, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f14 6s2 6p6 6d5 7s2"),
+    ("Actinides", "Hs", "Hassium", 108, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f14 6s2 6p6 6d6 7s2"),
+    ("Actinides", "Mt", "Meitnerium", 109, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f14 6s2 6p6 6d7 7s2"),
+    ("Actinides", "Ds", "Darmstadtium", 110, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f14 6s2 6p6 6d8 7s2"),
+    ("Actinides", "Rg", "Roentgenium", 111, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f14 6s2 6p6 6d9 7s2"),
+    ("Actinides", "Cn", "Copernicium", 112, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f14 6s2 6p6 6d10"),
+    ("Actinides", "Nh", "Nihonium", 113, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f14 6s2 6p6 6d10 7s2 7p1"),
+    ("Actinides", "Fl", "Flerovium", 114, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f14 6s2 6p6 6d10 7s2 7p2"),
+    ("Actinides", "Mc", "Moscovium", 115, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f14 6s2 6p6 6d10 7s2 7p3"),
+    ("Actinides", "Lv", "Livermorium", 116, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f14 6s2 6p6 6d10 7s2 7p4"),
+    ("Actinides", "Ts", "Tennessine", 117, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f14 6s2 6p6 6d10 7s2 7p5"),
+    ("Actinides", "Og", "Oganesson", 118, "1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p6 4d10 4f14 5s2 5p6 5d10 5f14 6s2 6p6 6d10 7s2 7p6"),
+
+]
+# Noble gases for shorthand notation
+noble_gases = {
+    2: "He",
+    10: "Ne",
+    18: "Ar",
+    36: "Kr",
+    54: "Xe",
+    86: "Rn",
+}
+
+def get_shorthand_electron_config(atomic_number, config):
+    """
+    Returns the shorthand (noble gas) electron configuration.
+    """
+    previous_noble_gas = ""
+    remaining_config = config
+
+    # Find the previous noble gas
+    for z, symbol in sorted(noble_gases.items(), reverse=True):
+        if atomic_number > z:
+            previous_noble_gas = f"[{symbol}]"
+            remaining_config = config.split(f"{symbol} ")[-1]  # Trim to get remaining config
+            break
+
+    return f"{previous_noble_gas} {remaining_config}".strip()
+
+
+def create_element_folders(base_path):
+    """
+    Creates folders and configuration files for elements with shorthand configurations.
+    """
+    try:
+        # Ensure base path exists
+        os.makedirs(base_path, exist_ok=True)
+        
+        periodic_table_folder = os.path.join(base_path, "Periodic-Table")
+        os.makedirs(periodic_table_folder, exist_ok=True)
+
+        # Create folders and configuration files
+        for family, symbol, name, atomic_number, config in elements_with_details:
+            # Create Family folder
+            family_folder_path = os.path.join(periodic_table_folder, family)
+            os.makedirs(family_folder_path, exist_ok=True)
+
+            # Create Symbol folder
+            symbol_folder_path = os.path.join(family_folder_path, symbol)
+            os.makedirs(symbol_folder_path, exist_ok=True)
+
+            # Compute the shorthand electron configuration
+            shorthand_config = get_shorthand_electron_config(atomic_number, config)
+            symbol_config_folder_name = f"{symbol}_{shorthand_config.replace(' ', '_')}"
+            symbol_config_folder_path = os.path.join(symbol_folder_path, symbol_config_folder_name)
+            os.makedirs(symbol_config_folder_path, exist_ok=True)
+
+            # Create the Electron-configuration.txt file
+            config_file_path = os.path.join(symbol_config_folder_path, "Electron-configuration.txt")
+            with open(config_file_path, "w") as file:
+                file.write(f"Element: {name}\n")
+                file.write(f"Symbol: {symbol}\n")
+                file.write(f"Atomic Number: {atomic_number}\n")
+                file.write(f"Family: {family}\n")
+                file.write(f"Electron Configuration: {shorthand_config}\n")
+
+            print(f"Created folder and configuration file for: {symbol} - {name}")
+
+        print("All folders and files created successfully.")
+
+    except Exception as e:
+        print(f"Error during folder creation: {e}")
+
+import os
+import qrcode
+
+def create_qr_code(text, output_path):
+    """Generate a QR code from text and save it as an image."""
+    if not text.strip():  # Ensure there's usable data
+        print(f"No usable data in text: '{text}'")
+        return
+    
+    qr = qrcode.QRCode(
+        version=None,  # Automatically determine size
+        error_correction=qrcode.constants.ERROR_CORRECT_Q,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(text.strip())
+    qr.make(fit=True)
+
+    img = qr.make_image(fill_color="black", back_color="white")
+    img.save(output_path)
+    print(f"QR code saved to {output_path}")
+
+def generate_qr_codes_for_elements(elements_base_path):
+    """Generate QR codes for the last folder of each element."""
+    for root, dirs, files in os.walk(elements_base_path):
+        if 'Last_Element.txt' in files:  # Assume this identifies the last folder
+            last_element_file = os.path.join(root, 'Last_Element.txt')
+            qr_code_path = os.path.join(root, 'element_qr_code.png')
+
+            # Check if the file exists and has content
+            if not os.path.exists(last_element_file):
+                print(f"File {last_element_file} does not exist.")
+                continue
+
+            with open(last_element_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            if not content.strip():  # Check if the file has valid content
+                print(f"File {last_element_file} is empty or has no usable data.")
+                continue
+            
+            print(f"Generating QR code for data: {content.strip()}")
+            create_qr_code(content, qr_code_path)
+
+
+def add_qr_to_last_folder(base_path):
+    """Generate and add a QR code image for the text file in the last folder of each element."""
+    for root, dirs, files in os.walk(base_path):
+        # Check if this is the last folder by checking if dirs is empty
+        if not dirs:
+            # Check for the presence of a text file
+            text_files = [f for f in files if f.endswith('.txt')]
+            for text_file in text_files:
+                text_file_path = os.path.join(root, text_file)
+                with open(text_file_path, 'r') as file:
+                    content = file.read()
+                
+                # Generate QR code
+                qr_output_path = os.path.join(root, f"{os.path.splitext(text_file)[0]}_QR.png")
+                create_qr_code(content, qr_output_path)
+                print(f"QR Code created: {qr_output_path}")
+
+# Base path to the Periodic Table directory
+base_path = r"c:\Users\Krono\OneDrive\Desktop\Elements\Periodic-Table"
+add_qr_to_last_folder(base_path)
+
+def create_shortcuts(base_path):
+    """
+    Creates shortcuts to the next element folder.
+    """
+    try:
+        periodic_table_folder = os.path.join(base_path, "Periodic-Table")
+        
+        # Create shortcuts
+        for i, (family, symbol, name, atomic_number, config) in enumerate(elements_with_details):
+            shorthand_config = get_shorthand_electron_config(atomic_number, config)
+            current_symbol_config_folder_path = os.path.join(
+                periodic_table_folder, family, symbol, f"{symbol}_{shorthand_config.replace(' ', '_')}"
+            )
+
+            # Ensure the current folder exists
+            if not os.path.exists(current_symbol_config_folder_path):
+                print(f"Warning: Folder does not exist: {current_symbol_config_folder_path}")
+                continue
+
+            # Create shortcut to the next element
+            if i + 1 < len(elements_with_details):
+                next_family, next_symbol, next_name, next_atomic_number, next_config = elements_with_details[i + 1]
+                next_shorthand_config = get_shorthand_electron_config(next_atomic_number, next_config)
+                next_symbol_config_folder_path = os.path.join(
+                    periodic_table_folder, next_family, next_symbol, f"{next_symbol}_{next_shorthand_config.replace(' ', '_')}"
+                )
+
+                # Only create shortcut if the target folder exists
+                if os.path.exists(next_symbol_config_folder_path):
+                    create_shortcut(next_symbol_config_folder_path, current_symbol_config_folder_path)
+                else:
+                    print(f"Next folder does not exist for {symbol}. Skipping shortcut creation.")
+
+    except Exception as e:
+        print(f"Error during shortcut creation: {e}")
+
+
+def create_shortcut(target_path, shortcut_path):
+    """
+    Creates a shortcut to the target folder inside the given shortcut path.
+    """
+    try:
+        target_path = os.path.abspath(target_path)
+        shortcut_name = os.path.join(shortcut_path, "Next_Element.lnk")
+        
+        # Debug: Print paths
+        print(f"Creating shortcut: {shortcut_name} -> {target_path}")
+
+        # Check if target path exists
+        if not os.path.exists(target_path):
+            print(f"Warning: Target path does not exist: {target_path}")
+            return
+
+        # Create the shortcut
+        shell = Dispatch('WScript.Shell')
+        shortcut = shell.CreateShortcut(shortcut_name)
+        shortcut.TargetPath = target_path
+        shortcut.WorkingDirectory = target_path
+        shortcut.Save()
+
+        print(f"Shortcut created: {shortcut_name}")
+
+    except Exception as e:
+        print(f"Error creating shortcut: {e}")
+
+# Specify the base path where the folders should be created
+base_path = r"c:/Users/yourusername/path/Elements"  # Modify this path as necessary
+create_element_folders(base_path)
+
+#### run twice for qr codes 
